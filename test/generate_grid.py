@@ -1,7 +1,7 @@
 import math
 
-m = 1000
-n = 1000
+m = 100
+n = 100
 b = (m+n-2)*2
 input_file_name = f'{m}x{n}_grid.txt'
 
