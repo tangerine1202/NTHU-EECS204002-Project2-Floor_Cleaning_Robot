@@ -1,5 +1,6 @@
 #include <iostream>
 #include <queue>
+#include <stack>
 #define maxm 1005       // max # of rows of the board
 #define maxn 1005       // max # of columns of the board
 #define manb 2147483647 // max # of battery
@@ -24,10 +25,10 @@ struct Cell
   short row, col;
   short type;
   int level;
-  /* accumulated in degree */
-  short in;
-  /* out degree */
-  short out;
+  // # of paths from the high level can go into the cell
+  unsigned long long in;
+  // # of paths under the cell which it con go out to visit
+  unsigned long long out;
   bool visited;
 } cells[maxm][maxn];
 
@@ -43,8 +44,9 @@ int total_free_cells;
 
 int m, n, b;
 
-// Calculate level, in, out of cells
 void cal_basic_info(Cell *);
+void update_in(Cell *);
+int find_path(Cell *, int, deque<Cell *> &, int &);
 void find_paths();
 void show_all();
 
@@ -95,7 +97,7 @@ int main()
   // Calculate level, in, out of cells
   cal_basic_info(start);
 
-  // show_all();
+  show_all();
 
   find_paths();
   // TODO: substract back index of the walls
@@ -112,9 +114,9 @@ void cal_basic_info(Cell *start)
   // init
   q.push(start);
   start->level = 0;
-  // for comprehensive requirement
-  start->in = 1;
+  start->out = 1;
 
+  // BFS: update cell.level & cell.in (path can go throught the cell)
   while (!q.empty())
   {
     cur = q.front();
@@ -126,7 +128,7 @@ void cal_basic_info(Cell *start)
 
       if (next->type == OBSTACLE)
         continue;
-      else if (cur->level > next->level)
+      if (cur->level > next->level)
         continue;
 
       else if (cur->level + 1 < next->level)
@@ -140,24 +142,25 @@ void cal_basic_info(Cell *start)
         // Increment level counter
         level_cnt[next->level] += 1;
 
-        next->in = (next->in == 0) ? cur->in : next->in + 1;
-        cur->out += 1;
+        // next->out = (next->out == 0) ? cur->out : next->out + 1;
+        next->out += cur->out;
         q.push(next);
       }
       else if (cur->level + 1 == next->level)
-      {
-        cur->out += 1;
-        next->in += 1;
-      }
+        // next->out += 1;
+        next->out += cur->out;
       else if (cur->level == next->level)
-      {
-        cur->out += 1;
-        next->in += 1;
-      }
+        // next->out += 1;
+        next->out += cur->out;
     }
   }
 
+  // DFS: update cell.out (path the cell can go to)
+  // FIXME: very slow & cause out of time limit!!!
+  update_in(start);
+
   // Sort cells by level
+  // TODO: can count total nubmer of free cells when input
   int sum = 0; // also equal total number of free cells
   int tmp = 0;
   int idx;
@@ -181,6 +184,48 @@ void cal_basic_info(Cell *start)
   }
 }
 
+// Calculate # of path the cell can go into
+void update_in(Cell *start)
+{
+  stack<Cell *> s;
+  Cell *cur;
+  Cell *next = nullptr;
+
+  // init
+  s.push(start);
+
+  while (!s.empty())
+  {
+    cur = s.top();
+
+    bool haveNext = false;
+    for (int i = 0; i < 4; ++i)
+    {
+      next = &(cells[cur->row + dx[i]][cur->col + dy[i]]);
+
+      if (next->type == OBSTACLE)
+        continue;
+      if (cur->level > next->level)
+        continue;
+
+      if (next->in != 0)
+        cur->in += next->in;
+      else
+      {
+        s.push(next);
+        haveNext = true;
+        break;
+      }
+    }
+
+    if (!haveNext)
+    {
+      cur->in = 1;
+      s.pop();
+    }
+  }
+}
+
 int find_path(Cell *cur, int battery, deque<Cell *> &dq, int &duplicated_cnt)
 {
   // 1. Add current cell
@@ -196,45 +241,51 @@ int find_path(Cell *cur, int battery, deque<Cell *> &dq, int &duplicated_cnt)
   for (int i = 0; i < 4; ++i)
   {
     cand = &(cells[cur->row + dx[i]][cur->col + dy[i]]);
+
     if (cand->type == OBSTACLE)
       continue;
-    else if (cand->level > battery)
-      // no enough battery
+    // no enough battery
+    if (cand->level > battery)
       continue;
-    else if (cand->level > cur->level)
-      // don't go deeper level
+
+    // FIXME: may need to do back tracing
+    // don't go deeper level
+    if (cand->level > cur->level)
       continue;
-    else if (!next)
+
+    // Pick the first valid next
+    if (!next)
       next = cand;
+    // Prefer non-visited
     else if (!cand->visited && next->visited)
-    {
       next = cand;
-    }
     else if (!cand->visited && !next->visited)
     {
+      // FIXME: Will this happen? Won't it be updated by BFS?
       if (cand->level > next->level)
         // prefer high level cell
         next = cand;
       else if (cand->level == next->level)
       {
-        if (cand->out < next->out)
+        if (cand->in < next->in)
           // prefer hard to visit cell
           next = cand;
-        else if (cand->out == next->out)
-          // FIXME: is the make sense?
-          // prefer less further path cell
-          if (cand->in < next->in)
-            next = cand;
+        // FIXME: if 'in' is the same, does which path to visit first matter?
+        // else if (cand->in == next->in)
+        // prefer less further path cell
+        // if (cand->out < next->out)
+        // next = cand;
       }
     }
     else if (cand->visited && next->visited)
     {
+      // FIXME: Will this happen? Won't it be updated by BFS?
       if (cand->level < next->level)
         // prefer use less battery
         next = cand;
       else if (cand->level == next->level)
-        if (cand->in > next->in)
-          // prefer more furthen path cell
+        if (cand->out > next->out)
+          // prefer more potential paths
           next = cand;
     }
   }
