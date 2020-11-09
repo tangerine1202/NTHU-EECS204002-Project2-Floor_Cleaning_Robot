@@ -142,16 +142,19 @@ void cal_basic_info(Cell *start)
         // Increment level counter
         level_cnt[next->level] += 1;
 
-        // next->out = (next->out == 0) ? cur->out : next->out + 1;
-        next->out += cur->out;
+        // FIXME: unsigned long long overflow
+        next->out = (next->out == 0) ? cur->out : next->out + 1;
+        // next->out += cur->out;
         q.push(next);
       }
       else if (cur->level + 1 == next->level)
-        // next->out += 1;
-        next->out += cur->out;
+        // FIXME: unsigned long long overflow
+        next->out += 1;
+      // next->out += cur->out;
       else if (cur->level == next->level)
-        // next->out += 1;
-        next->out += cur->out;
+        // FIXME: unsigned long long overflow
+        next->out += 1;
+      // next->out += cur->out;
     }
   }
 
@@ -209,7 +212,9 @@ void update_in(Cell *start)
         continue;
 
       if (next->in != 0)
-        cur->in += next->in;
+        // FIXME: unsigned long long overflow
+        // cur->in += next->in;
+        cur->in += 1;
       else
       {
         s.push(next);
