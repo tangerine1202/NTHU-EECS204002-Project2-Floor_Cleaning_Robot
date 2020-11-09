@@ -1,7 +1,8 @@
 import math
 
-m = 100
-n = 100
+# **odd** number only for grid test case
+m = 999
+n = 999
 b = (m+n-2)*2
 input_file_name = f'{m}x{n}_grid.txt'
 

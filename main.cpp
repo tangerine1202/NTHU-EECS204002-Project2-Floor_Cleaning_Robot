@@ -276,12 +276,10 @@ int find_path(Cell *cur, int battery, deque<Cell *> &dq, int &duplicated_cnt)
           // prefer hard to visit cell
           next = cand;
         // FIXME: if 'in' is the same, does which path to visit first matter?
-        // A: it slight improve the performance
-        else if (cand->in == next->in)
-          // prefer less potential path cell
-          // FIXME: pre more potential path greatly improve performance on grid test case
-          if (cand->out > next->out)
-            next = cand;
+        // else if (cand->in == next->in)
+        // prefer less potential path cell
+        // if (cand->out < next->out)
+        // next = cand;
       }
     }
     else if (cand->visited && next->visited)
