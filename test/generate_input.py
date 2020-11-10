@@ -1,7 +1,7 @@
-m = 1000
-n = 1000
+m = 5
+n = 5
 b = (m+n-2)*2
-input_file_name = f'{m}x{n}.txt'
+input_file_name = f'{m}x{n}'
 
 with open(input_file_name, 'w') as f:
     f.write(f'{m} {n} {b}')

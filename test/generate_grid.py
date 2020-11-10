@@ -1,10 +1,10 @@
 import math
 
 # **odd** number only for grid test case
-m = 999
-n = 999
+m = 5
+n = 5
 b = (m+n-2)*2
-input_file_name = f'{m}x{n}_grid.txt'
+input_file_name = f'{m}x{n}_grid'
 
 with open(input_file_name, 'w') as f:
     f.write(f'{m} {n} {b}')
