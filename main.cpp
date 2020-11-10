@@ -26,9 +26,9 @@ struct Cell
   short type;
   int level;
   // # of paths from the high level can go into the cell
-  unsigned long long in;
+  int in;
   // # of paths under the cell which it con go out to visit
-  unsigned long long out;
+  int out;
   bool visited;
 } cells[maxm][maxn];
 
@@ -225,7 +225,7 @@ void update_in(Cell *start)
 
     if (!haveNext)
     {
-      cur->in = 1;
+      cur->in = (cur->in == 0) ? 1 : cur->in;
       s.pop();
     }
   }
