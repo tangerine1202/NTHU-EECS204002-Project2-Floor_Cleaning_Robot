@@ -1,5 +1,5 @@
-m = 5
-n = 5
+m = 3
+n = 3
 b = (m+n-2)*2
 input_file_name = f'{m}x{n}'
 
