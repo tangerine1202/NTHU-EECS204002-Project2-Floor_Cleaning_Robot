@@ -1,6 +1,7 @@
 #include <iostream>
 #include <queue>
 #include <stack>
+#include <fstream>
 #define maxm 1005       // max # of rows of the board
 #define maxn 1005       // max # of columns of the board
 #define manb 2147483647 // max # of battery
@@ -8,6 +9,7 @@
 #define maxc 1000005    // max # of cells
 
 using namespace std;
+using std::cout;
 
 // enum of type
 enum
@@ -41,18 +43,23 @@ int level_cnt[maxl] = {0};
 */
 Cell *sorted_ptrs[maxc] = {nullptr};
 int total_free_cells;
+deque<Cell *> final_path;
 
 int m, n, b;
 
 void cal_basic_info(Cell *);
 void update_in(Cell *);
 int find_path(Cell *, int, deque<Cell *> &, int &);
-void find_paths();
+int find_paths();
 void show_all();
 
-int main()
+int main(int argc, char *argv[])
 {
-  cin >> m >> n >> b;
+  ifstream fin;
+  ofstream fout;
+  fout.open("final.path", ios::out);
+  fin.open(argv[1], ios::in);
+  fin >> m >> n >> b;
 
   // Add wall around the cells
   m += 2;
@@ -72,13 +79,13 @@ int main()
       cells[i][j].out = 0;
       cells[i][j].visited = false;
 
-      // Setup type of cell and get start cell
+      // Setup type of cell and get endpoint
       if (i == 0 || j == 0 || i == m - 1 || j == n - 1)
         // Add wall around the cells
         cells[i][j].type = OBSTACLE;
       else
       {
-        cin >> tmp;
+        fin >> tmp;
         if (tmp == '1')
           cells[i][j].type = OBSTACLE;
         else if (tmp == '0')
@@ -97,10 +104,19 @@ int main()
   // Calculate level, in, out of cells
   cal_basic_info(start);
 
-  show_all();
+  // show_all();
 
-  find_paths();
+  fout << find_paths() << '\n';
+  fout << start->row - 1 << ' ' << start->col - 1 << '\n';
+  while (!final_path.empty())
+  {
+    fout << final_path.front()->row - 1 << ' ' << final_path.front()->col - 1 << '\n';
+    final_path.pop_front();
+  }
   // TODO: substract back index of the walls
+
+  fout.close();
+  fin.close();
 
   return 0;
 }
@@ -113,8 +129,9 @@ void cal_basic_info(Cell *start)
 
   // init
   q.push(start);
-  start->level = 0;
   start->out = 1;
+  start->level = 0;
+  level_cnt[0] = 1;
 
   // BFS: update cell.level & cell.in (path can go throught the cell)
   while (!q.empty())
@@ -145,25 +162,32 @@ void cal_basic_info(Cell *start)
         // FIXME: unsigned long long overflow
         next->out = (next->out == 0) ? cur->out : next->out + 1;
         // next->out += cur->out;
+        cur->in += 1;
         q.push(next);
       }
       else if (cur->level + 1 == next->level)
+      {
         // FIXME: unsigned long long overflow
         next->out += 1;
-      // next->out += cur->out;
+        // next->out += cur->out;
+        cur->in += 1;
+      }
       else if (cur->level == next->level)
+      {
         // FIXME: unsigned long long overflow
         next->out += 1;
-      // next->out += cur->out;
+        // next->out += cur->out;
+        cur->in += 1;
+      }
     }
   }
 
   // DFS: update cell.out (path the cell can go to)
   // FIXME: very slow & cause out of time limit!!!
-  update_in(start);
+  // update_in(start);
 
   // Sort cells by level
-  // TODO: can count total nubmer of free cells when input
+  // TODO: can count total nubmer of free cells at input
   int sum = 0; // also equal total number of free cells
   int tmp = 0;
   int idx;
@@ -303,59 +327,67 @@ int find_path(Cell *cur, int battery, deque<Cell *> &dq, int &duplicated_cnt)
   return 0;
 }
 
-void find_paths()
+int find_paths()
 {
   Cell *start, *tmp;
   int battery, used_battery;
   int battery_usage = 0;
-  deque<Cell *> come, back;
+  deque<Cell *> come_dq, back_dq;
 
   // debug
   int path_idx = 0;
   int duplicated_cnt = 0;
+
+  // cout << R->row - 1 << " " << R->col - 1 << '\n';
+
   for (int i = total_free_cells - 1; i >= 0; --i)
   {
     start = sorted_ptrs[i];
     if (start->visited)
       continue;
 
-    cout << path_idx++ << "th path: " << '\n';
+    path_idx++;
+    // cout << path_idx << "th path: " << '\n';
 
-    // Find path from R to the start cell
+    // Find path from R to the endpoint
     battery = (b + 1) / 2;
-    used_battery = find_path(start, battery, come, duplicated_cnt);
+    used_battery = find_path(start, battery, come_dq, duplicated_cnt);
     battery_usage += used_battery;
-    cout << "come battery usage: " << used_battery << '\n';
+    // cout << "come battery usage: " << used_battery << '\n';
     // Print path
-    cout << "come: " << '\n';
-    while (!come.empty())
+    // cout << "come: " << '\n';
+    come_dq.pop_back();
+    while (!come_dq.empty())
     {
-      tmp = come.back();
-      come.pop_back();
-      cout << tmp->row << ", " << tmp->col << '\n';
+      tmp = come_dq.back();
+      come_dq.pop_back();
+      // cout << tmp->row - 1 << " " << tmp->col - 1 << '\n';
+      final_path.push_back(tmp);
     }
 
     // Find path from start back to R
     battery = b - used_battery;
-    used_battery = find_path(start, battery, back, duplicated_cnt);
+    used_battery = find_path(start, battery, back_dq, duplicated_cnt);
     battery_usage += used_battery;
-    cout << "back battery usage: " << used_battery << '\n';
-    // pop duplicated start cell
-    back.pop_front();
+    // cout << "back battery usage: " << used_battery << '\n';
+    // pop duplicated endpoint
+    back_dq.pop_front();
     // Print path
-    cout << "back: " << '\n';
-    while (!back.empty())
+    // cout << "back: " << '\n';
+    while (!back_dq.empty())
     {
-      tmp = back.front();
-      back.pop_front();
-      cout << tmp->row << ", " << tmp->col << '\n';
+      tmp = back_dq.front();
+      back_dq.pop_front();
+      // cout << tmp->row - 1 << " " << tmp->col - 1 << '\n';
+      final_path.push_back(tmp);
     }
   }
-  cout << "# of path: " << path_idx << '\n';
-  cout << "total battery usage: " << battery_usage << '\n';
+  // cout << "# of path: " << path_idx << '\n';
+  // cout << "total battery usage: " << battery_usage << '\n';
   // Duplicated cell cnt is slight inaccurate, since come and back path count R twice times
   // However, the inaccurate doesn't affect the measurement, so haven't fix it.
-  cout << "duplicated cell cnt: " << duplicated_cnt << '\n';
+  // cout << "duplicated cell cnt: " << duplicated_cnt << '\n';
+  return battery_usage;
 }
 
 void show_all()
